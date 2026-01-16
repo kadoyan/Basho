@@ -1,0 +1,26 @@
+{
+  "name": "location-logger",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && aws s3 sync dist/ s3://location-logger-kadoyan --delete",
+    "deploy:invalidate": "npm run deploy && aws cloudfront create-invalidation --distribution-id E1TAZJ8I96SRNF --paths '/*'"
+  },
+  "dependencies": {
+    "vue": "^3.4.21",
+    "pinia": "^2.1.7",
+    "idb": "^8.0.0",
+    "aws-amplify": "^6.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "vite": "^5.2.0",
+    "tailwindcss": "^3.4.1",
+    "postcss": "^8.4.35",
+    "autoprefixer": "^10.4.18"
+  }
+}
