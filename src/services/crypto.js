@@ -1,7 +1,13 @@
 /**
  * クライアントサイド暗号化サービス
  * Web Crypto APIを使用してAES-GCM暗号化を実装
+ *
+ * マスターキー方式:
+ * - マスターキー（不変）でデータを暗号化
+ * - マスターキーはmasterKeyServiceで管理
  */
+
+import { masterKeyService } from './masterKey'
 
 class CryptoService {
   constructor() {
@@ -11,27 +17,22 @@ class CryptoService {
 
   /**
    * 暗号化キーを初期化または取得
+   * マスターキーサービスから取得
    */
   async initKey() {
-    if (this.key) {
+    // マスターキーサービスからキーを取得
+    const masterKey = masterKeyService.getMasterKey()
+    if (masterKey) {
+      this.key = masterKey
       return this.key
     }
 
-    // 既存のキーを取得
-    const storedKey = await this.getStoredKey()
-    if (storedKey) {
-      this.key = storedKey
-      return this.key
-    }
-
-    // 新しいキーを生成
-    this.key = await this.generateKey()
-    await this.storeKey(this.key)
-    return this.key
+    throw new Error('Master key not initialized. Please login first.')
   }
 
   /**
    * AES-GCMキーを生成
+   * @deprecated マスターキーサービスで管理されるため、直接使用しない
    */
   async generateKey() {
     return await crypto.subtle.generateKey(
@@ -46,6 +47,7 @@ class CryptoService {
 
   /**
    * キーをIndexedDBに保存
+   * @deprecated マスターキーサービスで管理されるため、直接使用しない
    */
   async storeKey(key) {
     try {
@@ -68,6 +70,7 @@ class CryptoService {
 
   /**
    * IndexedDBからキーを取得
+   * @deprecated マスターキーサービスで管理されるため、直接使用しない
    */
   async getStoredKey() {
     try {

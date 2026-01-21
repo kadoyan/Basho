@@ -152,6 +152,104 @@ class DynamoDBService {
     }
   }
 
+  /**
+   * マスターキーを保存
+   */
+  async saveMasterKey(wrappedKey, iv) {
+    try {
+      const authStore = useAuthStore()
+      const token = await authStore.getIdToken()
+
+      if (!token) {
+        throw new Error('Authentication required')
+      }
+
+      const response = await post({
+        apiName: this.apiName,
+        path: '/masterkey',
+        options: {
+          body: {
+            wrappedKey,
+            iv
+          },
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }).response
+
+      const result = await response.body.json()
+      return result
+    } catch (err) {
+      console.error('Save master key to DynamoDB error:', err)
+      throw err
+    }
+  }
+
+  /**
+   * マスターキーを取得
+   */
+  async getMasterKey() {
+    try {
+      const authStore = useAuthStore()
+      const token = await authStore.getIdToken()
+
+      if (!token) {
+        throw new Error('Authentication required')
+      }
+
+      const response = await get({
+        apiName: this.apiName,
+        path: '/masterkey',
+        options: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }).response
+
+      const result = await response.body.json()
+      return result
+    } catch (err) {
+      console.error('Get master key from DynamoDB error:', err)
+      throw err
+    }
+  }
+
+  /**
+   * マスターキーを更新（パスワード変更時）
+   */
+  async updateMasterKey(wrappedKey, iv) {
+    try {
+      const authStore = useAuthStore()
+      const token = await authStore.getIdToken()
+
+      if (!token) {
+        throw new Error('Authentication required')
+      }
+
+      const response = await put({
+        apiName: this.apiName,
+        path: '/masterkey',
+        options: {
+          body: {
+            wrappedKey,
+            iv
+          },
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }).response
+
+      const result = await response.body.json()
+      return result
+    } catch (err) {
+      console.error('Update master key in DynamoDB error:', err)
+      throw err
+    }
+  }
+
 }
 
 export const dynamoDBService = new DynamoDBService()

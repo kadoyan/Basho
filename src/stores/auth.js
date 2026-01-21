@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { Amplify } from 'aws-amplify'
 import { signIn, signUp, signOut, getCurrentUser, fetchAuthSession, confirmSignUp, resendSignUpCode } from 'aws-amplify/auth'
+import { masterKeyService } from '../services/masterKey'
+import { dynamoDBService } from '../services/dynamodb'
 
 export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = ref(false)
@@ -56,6 +58,35 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (result.isSignedIn) {
         await checkAuth()
+
+        // ユーザーIDを取得
+        const currentUser = await getCurrentUser()
+        const userId = currentUser.userId
+
+        // マスターキーを取得して復号化
+        try {
+          const masterKeyData = await dynamoDBService.getMasterKey()
+          if (masterKeyData && masterKeyData.wrappedKey && masterKeyData.iv) {
+            // マスターキーをアンラップ（復号化）
+            await masterKeyService.loginUser(
+              masterKeyData.wrappedKey,
+              masterKeyData.iv,
+              password,
+              userId
+            )
+            console.log('🔑 Master key loaded successfully')
+          } else {
+            // マスターキーが存在しない場合は新規作成（初回ログイン時）
+            console.log('🔑 No master key found, creating new one...')
+            const wrapped = await masterKeyService.setupNewUser(password, userId)
+            await dynamoDBService.saveMasterKey(wrapped.wrappedKey, wrapped.iv)
+            console.log('🔑 Master key created and saved successfully')
+          }
+        } catch (keyErr) {
+          console.error('❌ Failed to load/create master key:', keyErr)
+          // マスターキーの読み込みに失敗してもログインは成功とする
+        }
+
         isAuthenticated.value = true
         return true
       }

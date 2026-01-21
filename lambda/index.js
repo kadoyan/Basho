@@ -78,6 +78,19 @@ exports.handler = async (event) => {
       return await deleteRecord(userId, pathParameters.id, headers);
     }
 
+    // マスターキー関連のルーティング
+    if (httpMethod === 'GET' && resource === '/masterkey') {
+      return await getMasterKey(userId, headers);
+    }
+
+    if (httpMethod === 'POST' && resource === '/masterkey') {
+      return await saveMasterKey(userId, JSON.parse(event.body), headers);
+    }
+
+    if (httpMethod === 'PUT' && resource === '/masterkey') {
+      return await updateMasterKey(userId, JSON.parse(event.body), headers);
+    }
+
     return createResponse(404, { error: 'Not found' }, headers);
   } catch (error) {
     console.error('Error:', error);
@@ -258,3 +271,122 @@ function generateId() {
   });
 }
 
+/**
+ * マスターキーを取得
+ */
+async function getMasterKey(userId, headers) {
+  const params = {
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'userId = :userId AND recordId = :recordId',
+    ExpressionAttributeValues: {
+      ':userId': userId,
+      ':recordId': 'MASTER_KEY'
+    },
+    Limit: 1
+  };
+
+  try {
+    const result = await docClient.send(new QueryCommand(params));
+
+    if (result.Items && result.Items.length > 0) {
+      const item = result.Items[0];
+      return createResponse(200, {
+        wrappedKey: item.wrappedKey,
+        iv: item.iv
+      }, headers);
+    }
+
+    return createResponse(404, {
+      error: 'Master key not found'
+    }, headers);
+  } catch (error) {
+    console.error('GetMasterKey error:', error);
+    return createResponse(500, {
+      error: 'Failed to retrieve master key',
+      details: error.message
+    }, headers);
+  }
+}
+
+/**
+ * マスターキーを保存
+ */
+async function saveMasterKey(userId, body, headers) {
+  const { wrappedKey, iv } = body;
+
+  if (!wrappedKey || !iv) {
+    return createResponse(400, {
+      error: 'Invalid request body. Required: wrappedKey, iv'
+    }, headers);
+  }
+
+  const now = Date.now();
+
+  const params = {
+    TableName: TABLE_NAME,
+    Item: {
+      userId,
+      recordId: 'MASTER_KEY',
+      wrappedKey,
+      iv,
+      createdAt: now,
+      updatedAt: now
+    }
+  };
+
+  try {
+    await docClient.send(new PutCommand(params));
+
+    return createResponse(201, {
+      success: true,
+      message: 'Master key saved successfully'
+    }, headers);
+  } catch (error) {
+    console.error('SaveMasterKey error:', error);
+    return createResponse(500, {
+      error: 'Failed to save master key',
+      details: error.message
+    }, headers);
+  }
+}
+
+/**
+ * マスターキーを更新
+ */
+async function updateMasterKey(userId, body, headers) {
+  const { wrappedKey, iv } = body;
+
+  if (!wrappedKey || !iv) {
+    return createResponse(400, {
+      error: 'Invalid request body. Required: wrappedKey, iv'
+    }, headers);
+  }
+
+  const now = Date.now();
+
+  const params = {
+    TableName: TABLE_NAME,
+    Item: {
+      userId,
+      recordId: 'MASTER_KEY',
+      wrappedKey,
+      iv,
+      updatedAt: now
+    }
+  };
+
+  try {
+    await docClient.send(new PutCommand(params));
+
+    return createResponse(200, {
+      success: true,
+      message: 'Master key updated successfully'
+    }, headers);
+  } catch (error) {
+    console.error('UpdateMasterKey error:', error);
+    return createResponse(500, {
+      error: 'Failed to update master key',
+      details: error.message
+    }, headers);
+  }
+}
